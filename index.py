@@ -3,26 +3,53 @@ import shutil
 import requests
 import tempfile
 import uuid
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
 from deepface import DeepFace
 from supabase import create_client, Client
 from pydantic import BaseModel
 
-# Initialize Supabase client
-supabase_url = "https://nrxqcfdbyscqgrdrqegu.supabase.co"
-supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yeHFjZmRieXNjcWdyZHJxZWd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIwMzQzNTIsImV4cCI6MjA2NzYxMDM1Mn0.TR9RdSYoaKwryNAJRlD6rhas4ri3liqT4p2-yvE6Vtg"
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Pre-load models to avoid timeout on first request
+    try:
+        print("Pre-loading DeepFace models...")
+        # This will download and cache the models
+        DeepFace.build_model("ArcFace")
+        print("Models loaded successfully")
+    except Exception as e:
+        print(f"Warning: Could not pre-load models: {e}")
+    yield
+
+# Initialize Supabase client with environment variables
+supabase_url = os.environ.get("SUPABASE_URL")
+supabase_key = os.environ.get("SUPABASE_KEY")
+
+if not supabase_url or not supabase_key:
+    raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY environment variables")
+
 supabase: Client = create_client(supabase_url, supabase_key)
 
 class ImageURL(BaseModel):
     url: str
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "Face Recognition API"}
 
 # Root endpoint for health check
 @app.get("/")
 async def root():
-    return {"message": "Face Recognition API is running", "status": "healthy"}
+    return {
+        "message": "Face Recognition API is running", 
+        "status": "healthy",
+        "endpoints": ["/health", "/upload-reference/", "/detect-from-url/"]
+    }
 
 def download_image(url: str, save_path: str):
     response = requests.get(url)
@@ -100,7 +127,6 @@ async def detect_from_url(image_data: ImageURL):
         # Clean up the detect image
         if detect_path and os.path.exists(detect_path):
             os.remove(detect_path)
-
 
 # Server configuration for Render
 if __name__ == "__main__":
