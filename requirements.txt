@@ -1,5 +1,5 @@
 fastapi[standard]
-deepface==0.0.79
+deepface
 tensorflow==2.16.2
 tf-keras==2.16.0
 supabase
