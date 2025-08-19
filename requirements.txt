@@ -7,3 +7,5 @@ pydantic
 requests
 uvicorn
 python-multipart
+gunicorn
+opencv-python-headless

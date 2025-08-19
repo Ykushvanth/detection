@@ -1,5 +1,0 @@
-[tool.poetry.dependencies]
-python = "^3.12"
-fastapi = "^0.104"
-uvicorn = "^0.24"
-# other dependencies
