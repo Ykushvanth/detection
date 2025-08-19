@@ -1,11 +1,8 @@
-# api_app.py
 import os
 import shutil
 import requests
 import tempfile
 import uuid
-from io import BytesIO
-from typing import Optional
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
 from deepface import DeepFace
@@ -40,13 +37,10 @@ async def upload_reference(file: UploadFile = File(...)):
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
             shutil.copyfileobj(file.file, temp_file)
             temp_path = temp_file.name
-        
         # Here you could process the image and store metadata in Supabase
         # For now, just acknowledge the upload
-        
         # Clean up the temporary file
         os.remove(temp_path)
-        
         return {"status": "Reference image processed", "filename": file.filename}
     except Exception as e:
         return JSONResponse(
@@ -61,11 +55,9 @@ async def detect_from_url(image_data: ImageURL):
         # Download the input image with unique filename
         detect_path = f"temp_detect_{uuid.uuid4().hex}.jpg"
         download_image(image_data.url, detect_path)
-        
         # Get all unknown persons from Supabase
         response = supabase.table("unknown_persons").select("*").execute()
         unknown_persons = response.data
-        
         # Check against all images from unknown_persons table
         for person in unknown_persons:
             ref_path = None
@@ -74,7 +66,6 @@ async def detect_from_url(image_data: ImageURL):
                 ref_image_url = person["image_url"]
                 ref_path = f"temp_ref_{uuid.uuid4().hex}.jpg"
                 download_image(ref_image_url, ref_path)
-                
                 result = DeepFace.verify(
                     img1_path=ref_path,
                     img2_path=detect_path,
@@ -82,7 +73,6 @@ async def detect_from_url(image_data: ImageURL):
                     detector_backend="retinaface",
                     enforce_detection=False
                 )
-                
                 if result["verified"]:
                     return {
                         "verified": True,
@@ -90,7 +80,6 @@ async def detect_from_url(image_data: ImageURL):
                         "distance": result["distance"],
                         "threshold": result["threshold"]
                     }
-                    
             except Exception as e:
                 print(f"Error processing image for person {person.get('id', 'unknown')}: {str(e)}")
                 continue
@@ -98,12 +87,10 @@ async def detect_from_url(image_data: ImageURL):
                 # Clean up the temporary reference image
                 if ref_path and os.path.exists(ref_path):
                     os.remove(ref_path)
-        
         return {
             "verified": False,
             "matched_with": None
         }
-        
     except Exception as e:
         return JSONResponse(
             status_code=500,
