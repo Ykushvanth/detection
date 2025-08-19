@@ -1,5 +1,6 @@
 fastapi[standard]
 deepface
+tf-keras
 supabase
 pydantic
 requests
