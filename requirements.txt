@@ -1,8 +1,7 @@
-fastapi==0.111.1
-uvicorn[standard]==0.23.2
-deepface==0.0.89
-supabase==2.2.0
-pydantic==1.10.12
-requests==2.31.0
-tensorflow==2.13.1
-keras==2.13.1
+fastapi[standard]
+deepface
+supabase
+pydantic
+requests
+uvicorn
+python-multipart
