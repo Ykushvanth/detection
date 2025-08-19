@@ -1,6 +1,7 @@
 fastapi[standard]
-deepface
-tensorflow>=2.15.0
+deepface==0.0.79
+tensorflow==2.15.0
+tf-keras==2.15.0
 supabase
 pydantic
 requests
