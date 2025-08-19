@@ -101,6 +101,7 @@ async def detect_from_url(image_data: ImageURL):
         if detect_path and os.path.exists(detect_path):
             os.remove(detect_path)
 
+
 # Server configuration for Render
 if __name__ == "__main__":
     import uvicorn
