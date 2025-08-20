@@ -7,5 +7,4 @@ pydantic
 requests
 uvicorn
 python-multipart
-gunicorn
-opencv-python-headless
+opencv-python-headless  # ← Changed from opencv-python
