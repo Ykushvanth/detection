@@ -1,166 +1,26 @@
-# import os
-# import shutil
-# import requests
-# import tempfile
-# import uuid
-# import asyncio
-# from contextlib import asynccontextmanager
-# from fastapi import FastAPI, UploadFile, File
-# from fastapi.responses import JSONResponse
-# from deepface import DeepFace
-# from supabase import create_client, Client
-# from pydantic import BaseModel
-
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     # Startup: Pre-load models to avoid timeout on first request
-#     try:
-#         print("Pre-loading DeepFace models...")
-#         # This will download and cache the models
-#         DeepFace.build_model("ArcFace")
-#         print("Models loaded successfully")
-#     except Exception as e:
-#         print(f"Warning: Could not pre-load models: {e}")
-#     yield
-
-# # Initialize Supabase client with environment variables
-# supabase_url = os.environ.get("SUPABASE_URL")
-# supabase_key = os.environ.get("SUPABASE_KEY")
-
-# if not supabase_url or not supabase_key:
-#     raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY environment variables")
-
-# supabase: Client = create_client(supabase_url, supabase_key)
-
-# class ImageURL(BaseModel):
-#     url: str
-
-# app = FastAPI(lifespan=lifespan)
-
-# # Health check endpoint
-# @app.get("/health")
-# async def health_check():
-#     return {"status": "healthy", "service": "Face Recognition API"}
-
-# # Root endpoint for health check
-# @app.get("/")
-# async def root():
-#     return {
-#         "message": "Face Recognition API is running", 
-#         "status": "healthy",
-#         "endpoints": ["/health", "/upload-reference/", "/detect-from-url/"]
-#     }
-
-# def download_image(url: str, save_path: str):
-#     response = requests.get(url)
-#     response.raise_for_status()
-#     with open(save_path, "wb") as f:
-#         f.write(response.content)
-
-# @app.post("/upload-reference/")
-# async def upload_reference(file: UploadFile = File(...)):
-#     try:
-#         # Use temporary file instead of persistent storage
-#         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
-#             shutil.copyfileobj(file.file, temp_file)
-#             temp_path = temp_file.name
-#         # Here you could process the image and store metadata in Supabase
-#         # For now, just acknowledge the upload
-#         # Clean up the temporary file
-#         os.remove(temp_path)
-#         return {"status": "Reference image processed", "filename": file.filename}
-#     except Exception as e:
-#         return JSONResponse(
-#             status_code=500,
-#             content={"error": f"Failed to process reference image: {str(e)}"}
-#         )
-
-# @app.post("/detect-from-url/")
-# async def detect_from_url(image_data: ImageURL):
-#     detect_path = None
-#     try:
-#         # Download the input image with unique filename
-#         detect_path = f"temp_detect_{uuid.uuid4().hex}.jpg"
-#         download_image(image_data.url, detect_path)
-#         # Get all unknown persons from Supabase
-#         response = supabase.table("unknown_persons").select("*").execute()
-#         unknown_persons = response.data
-#         # Check against all images from unknown_persons table
-#         for person in unknown_persons:
-#             ref_path = None
-#             try:
-#                 # Download the reference image from Supabase with unique filename
-#                 ref_image_url = person["image_url"]
-#                 ref_path = f"temp_ref_{uuid.uuid4().hex}.jpg"
-#                 download_image(ref_image_url, ref_path)
-#                 result = DeepFace.verify(
-#                     img1_path=ref_path,
-#                     img2_path=detect_path,
-#                     model_name="ArcFace",
-#                     detector_backend="retinaface",
-#                     enforce_detection=False
-#                 )
-#                 if result["verified"]:
-#                     return {
-#                         "verified": True,
-#                         "matched_with": person,
-#                         "distance": result["distance"],
-#                         "threshold": result["threshold"]
-#                     }
-#             except Exception as e:
-#                 print(f"Error processing image for person {person.get('id', 'unknown')}: {str(e)}")
-#                 continue
-#             finally:
-#                 # Clean up the temporary reference image
-#                 if ref_path and os.path.exists(ref_path):
-#                     os.remove(ref_path)
-#         return {
-#             "verified": False,
-#             "matched_with": None
-#         }
-#     except Exception as e:
-#         return JSONResponse(
-#             status_code=500,
-#             content={"error": f"Failed to process image: {str(e)}"}
-#         )
-#     finally:
-#         # Clean up the detect image
-#         if detect_path and os.path.exists(detect_path):
-#             os.remove(detect_path)
-
-# # Server configuration for Render
-# if __name__ == "__main__":
-#     import uvicorn
-#     port = int(os.environ.get("PORT", 8000))
-#     uvicorn.run(app, host="0.0.0.0", port=port)
+# api_app.py
 
 import os
-import tempfile
-import uuid
-import face_recognition
+import shutil
 import requests
+from io import BytesIO
+from typing import Optional
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
+from deepface import DeepFace
 from supabase import create_client, Client
 from pydantic import BaseModel
 
-# Environment variables
-supabase_url = os.environ.get("SUPABASE_URL")
-supabase_key = os.environ.get("SUPABASE_KEY")
-
-if not supabase_url or not supabase_key:
-    raise ValueError("Missing environment variables")
-
+# Initialize Supabase client
+supabase_url = "https://nrxqcfdbyscqgrdrqegu.supabase.co"
+supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yeHFjZmRieXNjcWdyZHJxZWd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIwMzQzNTIsImV4cCI6MjA2NzYxMDM1Mn0.TR9RdSYoaKwryNAJRlD6rhas4ri3liqT4p2-yvE6Vtg"
 supabase: Client = create_client(supabase_url, supabase_key)
 
 class ImageURL(BaseModel):
     url: str
 
 app = FastAPI()
-
-@app.get("/")
-async def root():
-    return {"message": "Face Recognition API is running", "status": "healthy"}
+os.makedirs("reference_images", exist_ok=True)
 
 def download_image(url: str, save_path: str):
     response = requests.get(url)
@@ -168,62 +28,69 @@ def download_image(url: str, save_path: str):
     with open(save_path, "wb") as f:
         f.write(response.content)
 
+@app.post("/upload-reference/")
+async def upload_reference(file: UploadFile = File(...)):
+    ref_path = f"reference_images/{file.filename}"
+    with open(ref_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return {"status": "Reference image uploaded", "filename": file.filename}
+
 @app.post("/detect-from-url/")
 async def detect_from_url(image_data: ImageURL):
-    detect_path = None
     try:
-        # Download input image
-        detect_path = f"temp_detect_{uuid.uuid4().hex}.jpg"
+        # Download the input image
+        detect_path = "detect.jpg"
         download_image(image_data.url, detect_path)
-        
-        # Get face encodings
-        input_image = face_recognition.load_image_file(detect_path)
-        input_encodings = face_recognition.face_encodings(input_image)
-        
-        if not input_encodings:
-            return {"verified": False, "error": "No face found"}
-        
-        input_encoding = input_encodings[0]
-        
-        # Get reference images from Supabase
+
+        # Get all unknown persons from Supabase
         response = supabase.table("unknown_persons").select("*").execute()
         unknown_persons = response.data
-        
+
+        # Check against all images from unknown_persons table
         for person in unknown_persons:
-            ref_path = None
+            # Download the reference image from Supabase
+            ref_image_url = person["image_url"]
+            ref_path = f"reference_images/temp_ref.jpg"
+            download_image(ref_image_url, ref_path)
+
             try:
-                ref_path = f"temp_ref_{uuid.uuid4().hex}.jpg"
-                download_image(person["image_url"], ref_path)
-                
-                ref_image = face_recognition.load_image_file(ref_path)
-                ref_encodings = face_recognition.face_encodings(ref_image)
-                
-                if ref_encodings:
-                    matches = face_recognition.compare_faces([ref_encodings], input_encoding)
-                    if matches:
-                        distance = face_recognition.face_distance([ref_encodings], input_encoding)
-                        return {
-                            "verified": True,
-                            "matched_with": person,
-                            "confidence": float(1 - distance)
-                        }
+                result = DeepFace.verify(
+                    img1_path=ref_path,
+                    img2_path=detect_path,
+                    model_name="ArcFace",
+                    detector_backend="retinaface",
+                    enforce_detection=False
+                )
+
+                if result["verified"]:
+                    return {
+                        "verified": True,
+                        "matched_with": person,
+                        "distance": result["distance"],
+                        "threshold": result["threshold"]
+                    }
+
             except Exception as e:
-                print(f"Error: {e}")
+                print(f"Error processing image: {str(e)}")
                 continue
+
             finally:
-                if ref_path and os.path.exists(ref_path):
+                # Clean up the temporary reference image
+                if os.path.exists(ref_path):
                     os.remove(ref_path)
-        
-        return {"verified": False, "matched_with": None}
+
+        return {
+            "verified": False,
+            "matched_with": None
+        }
+
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to process image: {str(e)}"}
+        )
+
     finally:
-        if detect_path and os.path.exists(detect_path):
+        # Clean up the detect image
+        if os.path.exists(detect_path):
             os.remove(detect_path)
-
-# Railway requires this exact format
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
-
