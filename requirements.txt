@@ -1,10 +1,10 @@
-fastapi[standard]
-deepface
+fastapi==0.104.0
+deepface==0.0.93
 tensorflow==2.16.2
 tf-keras==2.16.0
-supabase
-pydantic
-requests
-uvicorn
-python-multipart
-opencv-python-headless  # ← Changed from opencv-python
+supabase==2.18.1
+pydantic==2.11.7
+requests==2.32.5
+uvicorn==0.35.0
+python-multipart==0.0.20
+opencv-python-headless==4.10.0.84
