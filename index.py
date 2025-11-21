@@ -58,7 +58,7 @@ async def detect_from_url(image_data: ImageURL):
                     img1_path=ref_path,
                     img2_path=detect_path,
                     model_name="ArcFace",
-                    detector_backend="retinaface",
+                    detector_backend="opencv",  # Changed from retinaface to opencv
                     enforce_detection=False
                 )
 
