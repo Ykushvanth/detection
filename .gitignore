@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Local test files (keep these out of deployment)
+docker-run-local.ps1
+docker-run-local.bat
+DOCKER_LOCAL_TEST.md
+TROUBLESHOOTING.md
+
+# Reference images (these should be in Supabase, not in repo)
+reference_images/*.jpg
+reference_images/*.jpeg
+reference_images/*.png
+!reference_images/.gitkeep
+
