@@ -164,7 +164,7 @@ def download_image(url: str, max_size: int = MAX_FILE_SIZE) -> bytes:
     """Download image with size validation"""
     try:
         response = requests.get(url, timeout=10, stream=True)
-        response.raise_for_status()
+    response.raise_for_status()
         
         # Check content length
         content_length = response.headers.get('content-length')
@@ -203,9 +203,9 @@ async def upload_reference(file: UploadFile = File(...)):
     # Save file
     ref_path = f"reference_images/{file.filename}"
     try:
-        with open(ref_path, "wb") as buffer:
+    with open(ref_path, "wb") as buffer:
             buffer.write(contents)
-        return {"status": "Reference image uploaded", "filename": file.filename}
+    return {"status": "Reference image uploaded", "filename": file.filename}
     except Exception as e:
         logger.error(f"Failed to save file: {str(e)}")
         raise HTTPException(500, "Failed to save file")
@@ -227,7 +227,7 @@ async def detect_from_url(image_data: ImageURL):
         detect_fd.write(input_image_data)
         detect_fd.close()
         detect_path = detect_fd.name
-        
+
         # Get all unknown persons from Supabase
         logger.info("Fetching unknown persons from database")
         response = supabase.table("unknown_persons").select("*").execute()
@@ -238,12 +238,12 @@ async def detect_from_url(image_data: ImageURL):
             return {"verified": False, "matched_with": None, "message": "No reference images in database"}
         
         logger.info(f"Checking against {len(unknown_persons)} reference images")
-        
+
         # Check against all images from unknown_persons table
         for idx, person in enumerate(unknown_persons):
             try:
-                # Download the reference image from Supabase
-                ref_image_url = person["image_url"]
+            # Download the reference image from Supabase
+            ref_image_url = person["image_url"]
                 logger.info(f"Processing reference {idx + 1}/{len(unknown_persons)}")
                 
                 ref_image_data = download_image(ref_image_url)
@@ -264,7 +264,7 @@ async def detect_from_url(image_data: ImageURL):
                 )
                 
                 logger.info(f"Verification result: distance={result['distance']}, threshold={result['threshold']}")
-                
+
                 if result["verified"]:
                     logger.info(f"Match found with person ID: {person.get('id')}")
                     return {
@@ -274,11 +274,11 @@ async def detect_from_url(image_data: ImageURL):
                         "threshold": result["threshold"],
                         "confidence": 1 - (result["distance"] / result["threshold"])
                     }
-                
+
             except Exception as e:
                 logger.error(f"Error processing reference image {idx + 1}: {str(e)}")
                 continue
-            
+
             finally:
                 # Clean up the temporary reference image
                 if ref_fd and os.path.exists(ref_fd.name):
@@ -294,13 +294,13 @@ async def detect_from_url(image_data: ImageURL):
             "matched_with": None,
             "message": f"No match found among {len(unknown_persons)} reference images"
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(500, f"Failed to process image: {str(e)}")
-    
+
     finally:
         # Clean up the detect image
         if detect_fd and os.path.exists(detect_fd.name):
